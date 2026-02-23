@@ -6,13 +6,17 @@ using VehicleInventory.Application.Vehical.Query.GetAvailableVehicles;
 using VehicleInventory.Domain.Repositories;
 using VehicleInventory.Infrastructure.Data;
 using VehicleInventory.Infrastructure.Repositories;
+using System.Net;
+
+// ⚡ Force TLS 1.2 and 1.3 for SQL Server connections
+ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
+// Add controllers
 builder.Services.AddControllers();
 
-// Swagger/OpenAPI
+// Swagger/OpenAPI setup
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -38,30 +42,36 @@ builder.Services.AddScoped<GetAvailableVehiclesHandler>();
 
 var app = builder.Build();
 
-// Apply migrations + seed data
+// ⚡ Apply migrations safely at startup
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
-    DataSeeder.Seed(dbContext);
+
+    try
+    {
+        dbContext.Database.Migrate();
+        DataSeeder.Seed(dbContext); // optional seeding
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Database migration/connection failed: " + ex.Message);
+        throw;
+    }
 }
 
 // Middleware
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-// ⚡ Swagger UI setup
-app.UseSwagger(); // generate swagger JSON
+// Swagger UI
+app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    // Swagger JSON location
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "VehicleInventory API v1");
-
-    // Serve UI at /swagger
-    c.RoutePrefix = "swagger"; // Swagger UI is now at /swagger
+    c.RoutePrefix = "swagger";
 });
 
-// Optional: redirect /swagger/index.html → /swagger
+// Optional redirect for /swagger/index.html
 app.MapGet("/swagger/index.html", context =>
 {
     context.Response.Redirect("/swagger", permanent: false);

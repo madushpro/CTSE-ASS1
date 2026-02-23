@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: vehicleinventory-sql
+    environment:
+      SA_PASSWORD: "YourStrongPassword123!"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  api:
+    build: .
+    container_name: vehicleinventory-api
+    ports:
+      - "5000:5000"
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ERPCT;User Id=sa;Password=YourStrongPassword123!;Encrypt=False;TrustServerCertificate=True;"
+    depends_on:
+      - sqlserver
+
+volumes:
+  sql_data:
